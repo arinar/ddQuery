@@ -405,9 +405,9 @@ classdef ddQuery < double
 						case '<-'
 							ok = strcmp(find_args(1:2:end), 'ObjectKind');
 							if isempty(combinator.dp)
-								prop_args = {'Property', ['^' combinator.dp '(\(#\d+\))?$']};
-							else
 								prop_args = {'Property', '.*', 'regexp', true};
+							else
+								prop_args = {'Property', ['^' combinator.dp '(\(#\d+\))?$']};
 							end
 							new = [double.empty(1, 0), dsdd('FindRefs', root, prop_args{:}, find_args{[ok;ok]}, 'target', info)];
 							new = ddQuery.find(new, 'SearchDepth', 0, find_args{~[ok;ok]});
