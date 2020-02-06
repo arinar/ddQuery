@@ -436,7 +436,7 @@ classdef ddQuery < double
 						
 						% outer join of group and new elements
 						group = [
-							group(:, repmat(1:size(group, 2), size(new, 2), 1))
+							group(:, repmat(1:size(group, 2), 1, size(new, 2)))
 							new(:, repmat(1:size(new, 2), size(group, 2), 1))
 							];
 					end
