@@ -6,7 +6,7 @@
                             \__,_|\__,_|\___\_\\__,_|\___|_|   \__, |
                             easy-as-pie API to Data Dictionary |___/
 
-v0.8, 2017 robert@raschhour.com
+v0.9, 2017 robert@raschhour.com
 
 ddQuery is free software: you can redistribute it and/or modify it under the terms of the GNU
 General Public License as published by the Free Software Foundation, either version 3 of the
