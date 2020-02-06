@@ -32,11 +32,11 @@ classdef ddQuery < double
 			
 			elseif iscellstr(query) % pathes-array conversion
 				handles = cellfun(@(s) dsdd('GetAttribute', s, 'hDdObject'), query, 'UniformOutput', false);
-				%ignore nonmatching: assert(all(~cellfun(@isempty, handles)), 'does not match an object');
+				% ignore nonmatching... assert(all(~cellfun(@isempty, handles)), 'does not match an object');
 				handles = [handles{:}];
 				
 			elseif ischar(query) % normal query
-				% additional arguments represent sets of blocks to pick from via ^123 - index
+				% additional arguments represent sets of objects to pick from via (123) - index
 				idx = cellfun(@isnumeric, varargin);
 				varargin(idx) = cellfun(@(hs) {double(reshape(hs, 1, []))}, varargin(idx));
 				
@@ -76,11 +76,11 @@ classdef ddQuery < double
 							j = min(i+w-1, size(repr, 1));
 							fprintf('  Columns %d through %d\n', i, j)
 							crepr = [repr(i:j, :)];
-							crepr(end+1, 1:end-1) = {char(10)}; %#ok<AGROW>
+							crepr(end+1, 1:end-1) = {char(10)}; %#ok<CHARTEN,AGROW>
 							disp([crepr{:}]);
 						end
 					else % can print evrything in one go.
-						repr(end+1, 1:end-1) = {char(10)};
+						repr(end+1, 1:end-1) = {char(10)}; %#ok<CHARTEN>
 						disp([repr{:}])
 					end
 				end
@@ -119,7 +119,7 @@ classdef ddQuery < double
 							case 'parent'
 								sel = arrayfun(@(h) {dsdd('GetAttribute', h, 'hDdParent')}, double(sel));
 								
-							case 'path' % return the path of all blocks
+							case 'path' % return the path of all objects
 								sel = arrayfun(@(h) {dsdd('GetAttribute', h, 'NormalizedPath')}, double(sel));
 								
 							case 'name'
@@ -142,12 +142,6 @@ classdef ddQuery < double
 									
 								end
 						end
-						
-						% TODO: when the result is a cell but happens to be a uniform (e.g.
-						% LineHandles.Outport of a bunch of inport blocks), the result cab be a
-						% uniform double-array instead of a cell nesting all the single entries.
-						% This is counter-intuitive for LineHandles (of arbitrary blocks) but
-						% not for e.g. Position
 						
 					case '{}' % actions
 						
@@ -231,12 +225,10 @@ classdef ddQuery < double
 		function new = rdivide(object, spec)
 			if ischar(spec) % it's an object-kind specification
 				% TODO: parse the spec entirely (param-specs, class)
-				spec = regexp(spec, '(?<kind>\w+)(#)?(?<id>(?(2)\w+))', 'names', 'once');
+				spec = regexp(spec, '(?<kind>\w+)(#)?(?<name>(?(2)\w+))', 'names', 'once');
 				assert(~isempty(spec));
-				if isempty(spec.id), spec.id = ['ddq_' spec.kind]; end
-				
-				%new = ddQuery(arrayfun(@(o) dsdd(['Add' spec], o, ['ddq_' spec.kind]), double(object)));
-				new = ddQuery(ddQuery.arrayfun(@(p) dsdd('Create', [spec.id], 'Parent', p, 'ObjectKind', spec.kind), double(object)));
+				if isempty(spec.name), spec.name = ['ddq_' spec.kind]; end
+				new = ddQuery(ddQuery.arrayfun(@(p) dsdd('Create', [spec.name], 'Parent', p, 'ObjectKind', spec.kind, 'autorename', true), double(object)));
 
 			elseif isa(spec, 'ddQuery')
 				if isscalar(spec)
@@ -268,18 +260,18 @@ classdef ddQuery < double
 				if ~isnan(str2double(combinator.sp)), combinator.sp = str2double(combinator.sp); end
 				if ~isnan(str2double(combinator.dp)), combinator.dp = str2double(combinator.dp); end
 				
-				% build the filter for find from blockspec (all searches are reduced to this)
+				% build the filter for find from objectspec (all searches are reduced to this)
 				find_args = {};
 				
-				% combinators always represent a search relating to some set of properties from the row of
-				% blocks selected previously. In order to avoid multiple seaches based on the same info (that
-				% will result in the same result), we can group all rows based on this distinguishing info and
+				% combinators always represent a search relating to some set of properties from a row of nodes
+				% selected previously. In order to avoid multiple seaches based on the same info (that will
+				% result in the same result), we can group all rows based on this distinguishing info and
 				% perform the search with this and then outer-join the result to the original set of rows
 				switch combinator.type
 					case ',' % group all into one, because not really a combinator
 						hinfos = repmat(root, size(hot));
-					case {'\', '\\'} % group by parent of the last object
-						% case {'\', '\\', ' '}  NOTE/TODO: the sibling-combinator ' ' can't be here included here because each block cannot be included amongst its own siblings
+					case {'\', '\\'} % group by parent of the last objets
+						% case {'\', '\\', ' '}  NOTE/TODO: the sibling-combinator ' ' can't be here included here because each object cannot be included amongst its own siblings
 						hinfos = arrayfun(@(h) dsdd('GetAttribute', h, 'hDdParent'), hot);
 					otherwise % group only by object-handle itself
 						hinfos = hot;
@@ -353,7 +345,7 @@ classdef ddQuery < double
 						case ','
 							new = ddQuery.find(root, find_args{:});
 							
-						case ' ' % sibling of the current block
+						case ' ' % sibling of the current object
 							new = setdiff(ddQuery.find(dsdd('GetAttribute', info, 'hDdParent'), ...
 								'SearchDepth', 1, find_args{:}), info);
 							
@@ -426,10 +418,9 @@ classdef ddQuery < double
 						group = group(:, ismember(group(selector, :), new));
 					else %if isstruct(selector) ~> append block corresponding to this group
 						
-						% TODO: perf: move this intersect-step upwards, to avoid unneccesary
-						% `find_system`-calls when there aren't any restrictions OR if there is
-						% a candidate set, simply test each candidate against the set of
-						% restrictions using find_system.
+						% TODO: perf: move this intersect-step upwards, to avoid unneccesary `find_system`-calls when
+						% there aren't any restrictions OR if there is a candidate set, simply test each candidate
+						% against the set of restrictions using find_system.
 						if ~isempty(selector.argidx)
 							new = intersect(new, varargin{str2double(selector.argidx)});
 						end
@@ -439,6 +430,7 @@ classdef ddQuery < double
 							new = intersect(new, dsddman('GetSelected'));
 						end
 						
+						% outer join of group and new elements
 						group = [
 							group(:, repmat(1:size(group, 2), size(new, 2), 1))
 							new(:, repmat(1:size(new, 2), size(group, 2), 1))
@@ -446,6 +438,8 @@ classdef ddQuery < double
 					end
 					new_handles = [ new_handles, group ]; %#ok<AGROW>
 				end
+				
+				% next selector step: handles from new_handles, hot from last selector results
 				handles = new_handles;
 				if isnumeric(selector)
 					hot = handles(selector, :);
