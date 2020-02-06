@@ -417,8 +417,7 @@ classdef ddQuery < double
 							
 						case '<<'
 					end
-					new = unique(new);
-					
+					new = reshape(unique(new), 1, []); % reshape for ML 2010b unique
 					if isnumeric(selector) % selector was reference ~> pick only columns, where the ref matches to one of the results
 						group = group(:, ismember(group(selector, :), new));
 					else %if isstruct(selector) ~> append block corresponding to this group
