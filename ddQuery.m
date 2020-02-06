@@ -248,8 +248,13 @@ classdef ddQuery < double
 			
 			% we start with the combinator '//' for arbitrary descendence and the search root
 			
-			root = regexprep(dsdd('GetAttribute', dsddman('GetSelected'), 'path'), '^(//DD\d+).*$', '$1'); % root = '//DD0/';
-			root = dsdd('GetAttribute', root, 'hddobject'); % always search only in current model
+			if dsddman('IsGuiOpen')
+				root = regexprep(dsdd('GetAttribute', getfield(dsddman('GetSelected'), {1}), 'path'), '^(//DD\d+).*$', '$1'); % root = '//DD0/';
+			else
+				root = '//DD0';
+			end
+			
+			root = dsdd('GetAttribute', root, 'hddobject'); % always search only in current data dictionary workspace
 			handles = double.empty(0, 1);
 			hot = root;
 			for act = [',' combinators; selectors]
